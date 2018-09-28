@@ -7,11 +7,9 @@ var axios = require('axios');
 var path = require('path');
 var mongoose = require('mongoose');
 var app = express();
-var bcrypt = require('bcrypt');
 
 // Establish database connection
-mongoose.connect('mongodb://localhost/basic_mongoose');
-
+mongoose.connect('mongodb://localhost/basic_mongoose')
 // app.use(bodyParser.urlencoded({extended: true}));
 app.use(bodyParser.json());
 
@@ -30,57 +28,127 @@ app.set('view engine', 'ejs');
 app.use(express.static( __dirname + '/public/dist/public' ));
 
 
-// Set up constructor for our data
-var ProductSchema = new mongoose.Schema({
-	productId: {type: String},
-	name: {type: String, required:[true, "Product must have a name!"], minlength: [3, "Product name must be longer than 3 characters!"]},
-	quantity: {type: Number, required:[true, "Product must have quantity"], min: [0, "Product quantity cannot be lower than 0!"]},
-	price: {type: Number, required: [true, "Product must have a price"], min: [0, "Product price cannot be lower than 0!"]}
-	},
-	{timestamps: true})
 
+// Set up constructor for our data
+var GunSchema = new mongoose.Schema({
+  GunName: {type: String},
+  NoGun: {type: Number},
+  GunType: {type: String}, 
+  Penetration: {type: Number},
+  Damage: {type: Array},
+  Range: {type: Number},
+  Weight: {type: Number},
+  },
+  {timestamps: true})
+
+var ShipSchema = new mongoose.Schema({
+  ClassName: {type: String},
+  Type: {type: String},
+  Description: {type: String},
+  Guns: [GunSchema],
+  Torpedo: {type: Number},
+  Speed: {type: Number},
+  DeckArmor: {type: Number},
+  BeltArmor: {type: Number},
+  HitPoint: {type: Number},
+  Cost: {type: Number},
+  Displacement: {type: Number},
+  },
+  {timestamps: true})
+
+
+var FleetSchema = new mongoose.Schema({
+  FleetName: {type: String},
+  Ships: [ShipSchema],
+  FleetType: {type: String}
+  },
+  {timeStamps: true})
 
 // Select and declare our model
-mongoose.model("Product", ProductSchema);
-var Product = mongoose.model("Product");
+mongoose.model("Ship", ShipSchema);
+mongoose.model("Gun", GunSchema);
+mongoose.model("Fleet", FleetSchema);
+var Ship = mongoose.model("Ship");
+var Gun = mongoose.model("Gun");
+var Fleet = mongoose.model("Fleet");
 
 // Routes
-app.get('/products', function(req, res){
-	Product.find({})
-	.then(data => console.log("Got all products, ", data)|| res.json(data))
-	.catch(errs => console.log("Create user failed, error: ", errs)|| res.json(errs))
+app.get('/gun', function(req, res){
+  Gun.find({})
+  .then(data=>res.json(data))
+  .catch(errs=>res.json(errs))
 })
 
-app.get('/products/:id', function(req, res){
-	Product.findOne({productId: req.params.id})
-	.then(data => console.log("Single product found", data) || res.json(data))
-	.catch(errs => console.log("Cannot find product: ", errs)|| json(errs))
+app.get("/gun/:id", function(req, res){
+  Gun.findOne({_id: req.params.id})
+  .then(data=>res.json(data))
+  .catch(errs=>res.json(errs))
 })
 
-app.post('/products', function(req, res){
-	newProduct = new Product({
-		productId : Math.floor(Math.random() * Math.floor(100000)),
-		name : req.body.name,
-		quantity : req.body.quantity,
-		price : req.body.price
-	})
-	newProduct.save()
-	.then(data => console.log("Product created, ", data)|| res.json(data))
-	.catch(errs => console.log("Cannot create product, error: ", errs)|| res.json(errs))
+app.post('/gun', function(req, res){
+  console.log("REQEUST BODY: ", req.body)
+  Gun.create(req.body)
+  .then(data=>res.json(data))
+  .catch(errs=>res.json(errs))
 })
 
-app.delete('/products/:id', function(req, res){
-	Product.findOneAndRemove({productId: req.params.id})
+app.get('/ship', function(req, res){
+  Ship.find({})
+  .then(data=>res.json(data))
+  .catch(errs=>res.json(errs))
+})
+
+app.post('/ship', function(req, res){
+  Gun.findById(req.body.Guns).then(weapons=>{
+    newShip = new Ship({
+      ClassName: req.body.ClassName,
+      Type: req.body.Type,
+      Description: req.body.Description,
+      Torpedo: req.body.Torpedo,
+      Guns: weapons,
+      Speed: req.body.Speed,
+      DeckArmor: req.body.DeckArmor,
+      BeltArmor: req.body.BeltArmor,
+      HitPoint: req.body.HitPoint,
+      Cost: req.body.Cost,
+      Displacement: req.body.Displacement
+    })
+    newShip.save()
+    .then(data=>res.json(data))
+    .catch(errs=>res.json(errs))
+  })
+})
+
+app.delete('/ship/:id', function(req, res){
+	Ship.findOneAndRemove({_id: req.params.id})
 	.then(data => console.log("Single product removed", data) || res.json(data))
 	.catch(errs => console.log("Cannot find product for removal: ", errs) || res.json(errs))
 })
 
-app.put('/products/:id', function(req, res){
-	Product.findOneAndUpdate({productId: req.params.id}, req.body, {new: true, runValidators : true})
-	.then(data => console.log("Product updated", data) || res.json(data))
-	.catch(errs => console.log("FAILED TO UPDATE: ", errs) || res.json(errs))
+app.post('/fleet', function(req, res){
+  newFleet = new Fleet({
+    FleetName: req.body.FleetName,
+    Ships: req.body.Ships,
+    FleetType: req.body.FleetType
+  })
+  newFleet.save()
+  .then(data=>res.json(data))
+  .catch(errs=>res.json(errs))
 })
 
+
+// Clear Data
+app.delete('/ship', function(req, res){
+  Ship.remove({})
+  .then(data=>console.log("Ship database purged, ", data) || res.json(data))
+  .catch(errs=>console.log("Failed: ", errs) || res.json(errs))
+})
+
+app.delete('/gun', function(req, res){
+  Gun.remove({})
+  .then(data=>console.log("Gun database purged, ", data) || res.json(data))
+  .catch(errs=>console.log("Failed: ", errs) || res.json(errs))
+})
 
 app.listen(8000, function() {
   console.log("listening on port 8000");
